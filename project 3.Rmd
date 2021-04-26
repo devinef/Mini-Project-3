@@ -1,7 +1,7 @@
 ---
-title: "Mini Project 3"
+title: "Subsets of Unisex Names"
 author: "Fiona Devine"
-date: "4/22/2021"
+date: "4/26/2021"
 output: html_document
 ---
 
@@ -9,65 +9,79 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
-
-
-```{r}
+```{r, message = FALSE}
 library(tidyverse)
 library(stringr)
+library(babynames)
 library(fivethirtyeight)
-view(unisex_names)
+```
+
+Str_subset() is able to filter the dataset to pull character values that match the criteria input in the search. It is important to note that this function will not filter down an existing dataset itself, but will instead provide only values, which can be compiled into a dataset through other means. 
+
+A common way in which str_subset() can be used is by searching by letters. 
+
+- str_subset(data, "n")
+  - Will pull all values from a dataset that include the letter n
+- str_subset(data, "n$")
+  - Will pull all values from a dataset that end with the letter n
+- str_subset(data, "^n")
+  - Will pull all values from a dataset that begin with the letter n
+  
+  
+You can also search by a string of letters such as "str_subset(data, "ann")", which would pull values from a dataset in which the letters "ann" are included consecutively. 
+
+
+An example of the use of the str_subset() function is through the unisex_names dataset from the fivethirtyeight package. This dataset includes 919 names given to males one third of the time and females one third of the time, with over 100 instances each. In many naming schemes, names are feminized by adding endings such as -e, -ia, -ina, and -a. As someone whose given name is a feminized Gaelic name using the "-a" ending, I am interested in looking at unisex names that end in "a", since many names ending that way are viewed as more feminine. 
+
+A way to pull names ending in "a" from a dataset is by using the str_subset() function. 
+
+
+```{r}
+str_subset(unisex_names$name, "a$")
 
 ```
+
+By using str_subset() on the name column of unisex_names, and by using "a$" to filter by the last letter "a", I am left with a list of 56 values from this dataset that fit my criteria of unisex names ending with the letter "a". 
+
+This has resulted in a list of character values pulled from the dataset, not observations in the dataset itself. Therefore, if I were to try to filter the unisex_names dataset using the filter() function with the previous str_subset() command inside, this will result in an error.
+
+I am interested in seeing columns such as "total", "male_share", "female_share", and "gap" along with the 56 unisex names that end in "a", so rather than manually filtering the unisex_names dataset by each individual name (ie. "filter("Elisha", "Shea", "Santana", "Alva", ...)), I can create a new separate dataset for just these names alone to work with easier. 
+
+```{r}
+a = str_subset(unisex_names$name, "a$") # setting the previous str_subset() function to a name
+unisexnames_a <- data.frame(name = c(a)) # creating a dataframe from the list of 56 name values (a) pulled in the previous code
+unisexnames_a %>% head(10) # displays the first 10 names
+```
+
+Here, I have created a new dataset from the 56 values that were extracted from the unisex_names dataset, now named unisexnames_a. This just gives a dataset of those 56 names and nothing else. 
+
+I am still interested in seeing "total", "male_share", "female_share", and "gap" in regards to these 56 names, so I can now use a join() function to join the new unisexnames_a with the original unisex_names datasets to combine the information. 
+
+```{r}
+names_joined = unisexnames_a %>% inner_join(unisex_names, by = "name") # joins the two datasets based on the name column
+names_joined_top10 = names_joined %>% top_n(n = 10, wt = total) # gives top 10 unisex names
+names_joined_top10
+```
+
+Using an inner_join() on these two datasets with respect to the name category, I now have a new dataset called names_joined that gives me all the columns in the original unisex_names dataset only with respect to unisex names ending with the letter "a". 
+
+
+Out of pure curiosity, I also want to see how these names have risen over time. Due to already pulling these names out of the unisex_names dataset, I can combine them with another dataset in which all of those names are located as well. One such dataset is the babynames dataset, which includes all names with over five occurrences from the years 1880 to 2017 as reported by the Social Security Administration. This shows how name instances have risen over time. The str_subset() name data can again be joined to the babynames dataset to see how these names have risen over time.
 
 
 
 ```{r}
 
-?str_subset()
+names_joined2 = names_joined_top10 %>% inner_join(babynames, by = "name")  #filter("Elisha", "Shea", "Santana", "Alva", "Kenyatta", "Lorenza", "Alpha", "Krishna", "Isa", "Seneca")
 
-a = str_subset(unisex_names$name, "a$")
-unisexnames_a2 <- data.frame(name = c(a), second_column = c("1":56))
-view(unisexnames_a2)
-
-names_joined = unisexnames_a2 %>% inner_join(unisex_names, by = "name") %>% select("name", "total", "male_share", "female_share", "gap")
-view(names_joined)
-
+ggplot(names_joined2, aes(x = year, y = n, color = sex)) + geom_line() + labs(x = "Year", y = "Count", title = "Top 10 Unisex Names Ending in 'a'") + theme_bw() + facet_wrap(~ name)
 
 ```
 
+Here, you are able to see the top 10 unisex baby names ending with the letter "a" and how their instances have changed over time. Since sex is mapped to the color variable, it is easy to see how these names have been used for males and females and how their trends have changed with time. 
 
-Str_subset() is able to filter the dataset to pull *values* that match the criteria input in the search. It is important to note that this function will not create a new dataset of its own, but will instead provide only values, which can be compiled into a dataset through other means. 
-
-A common way in which str_subset() can be used is by filtering by letters. 
-
-- str_subset(data, "n")
-- str_subset(data, "n$")
-- str_subset(data, "^n")
-- str_subset()
-
-
-
-
+Overall, the str_subset() function is a great way to get information from a dataset which would be difficult to pull otherwise. This data can then be organized for further use and 
 
 
 
